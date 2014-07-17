@@ -31,7 +31,7 @@ class PluginName {
         register_deactivation_hook( __FILE__, array( &$this, 'deactivate' ) );
 
         // register shortcodes
-        self::shortcodes();
+        self::register_shortcodes();
     }
 
     /**
@@ -57,7 +57,7 @@ class PluginName {
 
     // plugin custom codes
 
-    function shortcodes() {
+    function register_shortcodes() {
 
     }
 
