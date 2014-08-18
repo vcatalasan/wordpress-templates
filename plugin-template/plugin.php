@@ -15,11 +15,17 @@ class PluginName {
      *
      * @return    object    A single instance of this class.
      */
-    public static function get_instance() {
+    public static function get_instance( $plugin_name = null ) {
 
         // If the single instance hasn't been set, set it now.
         if ( null == self::$instance ) {
             self::$instance = new self;
+        }
+
+        // register plugin
+        if ( $plugin_name ) {
+            register_activation_hook( $plugin_name, array( self::$instance, 'activate' ) ); // plugin activation actions
+            register_deactivation_hook( $plugin_name, array( self::$instance, 'deactivate' ) );
         }
 
         return self::$instance;
