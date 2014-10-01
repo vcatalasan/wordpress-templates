@@ -73,7 +73,7 @@ function pmpro_checkForUpgrades()
 	if($pmpro_db_version < 1.72)
 	{		
 		//schedule the credit card expiring cron
-		wp_schedule_event(time(), 'monthly', 'pmpro_cron_credit_card_expiring_warnings');		
+		wp_schedule_event(current_time('timestamp'), 'monthly', 'pmpro_cron_credit_card_expiring_warnings');
 		
 		pmpro_setOption("db_version", "1.72");
 		$pmpro_db_version = 1.72;
@@ -92,6 +92,18 @@ function pmpro_checkForUpgrades()
 		
 		pmpro_setOption("db_version", "1.79");
 		$pmpro_db_version = 1.79;
+	}
+	
+	//set default filter_queries setting
+	if($pmpro_db_version < 1.791)
+	{
+		if(!pmpro_getOption("showexcerpts"))
+			pmpro_setOption("filterqueries", 1);
+		else
+			pmpro_SetOption("filterqueries", 0);
+			
+		pmpro_setOption("db_version", "1.791");
+		$pmpro_db_version = 1.791;
 	}
 }
 

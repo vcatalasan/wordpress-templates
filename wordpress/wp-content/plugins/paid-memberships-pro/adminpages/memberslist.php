@@ -203,13 +203,13 @@
 									-
 								<?php } ?>
 							</td>						
-							<td><?php echo date(get_option("date_format"), strtotime($theuser->user_registered))?></td>
+							<td><?php echo date(get_option("date_format"), strtotime($theuser->user_registered, current_time("timestamp")))?></td>
 							<td>
 								<?php 
 									if($auser->enddate) 
-										echo date(get_option('date_format'), $auser->enddate);
+										echo apply_filters("pmpro_memberslist_expires_column", date(get_option('date_format'), $auser->enddate), $auser);
 									else
-										echo __("Never", "pmpro");
+										echo __(apply_filters("pmpro_memberslist_expires_column", "Never", $auser), "pmpro");
 								?>
 							</td>
 						</tr>

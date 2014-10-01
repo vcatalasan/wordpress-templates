@@ -3,16 +3,18 @@ Contributors: Synved
 Donate link: http://synved.com/wordpress-shortcodes/
 Tags: AJAX, shortcode, shortcodes, tabs, UI, sections, accordions, layout, column, columns, link, links, url, permalink, permalinks, time, author, vcard, box, boxes, icons, button, buttons, free, content, plugin, image, edit, manage, Post, posts, image, thumbnail, categories, category, tag, tags, Taxonomy, user, template, Style, seo, page, pages, widget, CSS, editor, jquery, list, media, profile, shortlinks, filter, conditionals, if, condition, check
 Requires at least: 3.1
-Tested up to: 3.8.1
+Tested up to: 4.0
 Stable tag: trunk
 License: GPLv2
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
-An amazing free set of great elements for your site: SEO-ready tabs, sections, buttons, links to any content, author cards, lists, layouts and more!
+An amazing set of great elements: SEO-ready tabs, sections, buttons, links to any content, author cards, lists, layouts, *conditionals* and more!
 
 == Description ==
 
 [WordPress Shortcodes](http://synved.com/wordpress-shortcodes/ "WordPress Shortcodes – beautiful elements to spice up your site") is a free WordPress plugin that brings an amazing set of beautiful and useful elements to your site. The plugin comes bundled with the full set of elements, all absolutely free of charge.
+
+Learn how you can use WordPress Shortcodes to [easily create import / export safe links to images and any other content](http://synved.com/blog/help/tutorials/wordpress-shortcodes-for-import-export-safe-urls/)!
 
 > #### Eager to get a functioning example of how the shortcodes elements look and feel?
 > Look at some basic example shortcodes on the [Stripefolio demo site](http://wpdemo.synved.com/stripefolio/shortcodes/). Note that the demo site only presents a limited subset, the best way to test the full set is to install the plugin and try it yourself!
@@ -30,7 +32,7 @@ The plugin offers all common jQuery UI functionality as well like jQuery UI Acco
 The plugin also offers conditional shortcodes that allow to render content only based on certain conditions, such as only if the user is logged in or if the user is an administrator, an editor, author or has a custom capability or if the current post is password protected or if it has a featured image (post thumbnail).
 
 = Features =
-* 25+ shortcodes and different elements!
+* 26+ shortcodes and different elements!
 * Create tabs, sections/accordions, layout, lists, links, buttons and more!
 * Tabs are **SEO friendly** and work flawlessly without JavaScript!
 * Fully WordPress compliant, using latest standards
@@ -122,6 +124,48 @@ Have a look at the [Stripefolio theme demo](http://wpdemo.synved.com/stripefolio
 10. Another example of the Shortcodes Editor showing a partial list of some of the shortcodes (using the new interface)
 
 == Changelog ==
+
+= 1.6.24 =
+* Small adjustments
+
+= 1.6.23 =
+* Added post_meta_is conditional check
+
+= 1.6.22 =
+* Added Quick Link preset for link_user shortcode
+
+= 1.6.21 =
+* Some minor adjustments
+
+= 1.6.20 =
+* Add target attribute to button shortcode to allow opening links in new tabs/windows
+
+= 1.6.19 =
+* Added extra conditional check match_cookie
+* Renamed conditional checks match_xxx_argument to match_xxx (backwards compatible)
+
+= 1.6.18 =
+* Added extra conditional checks match_post_argument and match_request_argument
+
+= 1.6.17 =
+* Added extra conditional check match_query_argument
+* Misc adjustments
+
+= 1.6.16 =
+* Added fifth column shortcode
+
+= 1.6.15 =
+* Added class attribute for list shortcode
+
+= 1.6.14 =
+* Added linked-image template for links, allows to easily create import/export safe links to media items
+* Misc adjustments
+
+= 1.6.13 =
+* Adjusted versioning typo
+
+= 1.6.12 =
+* Fixed sections not opening correctly when using hash links
 
 = 1.6.11 =
 * Added extra conditional check is_post_sticky

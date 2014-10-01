@@ -15,13 +15,23 @@ class MMB_Stats extends MMB_Core
 
     function get_core_update($stats, $options = array())
     {
-        global $wp_version;
-
+        global $wp_version, $wp_local_package;
+        $locale = empty($wp_local_package) ? 'en_US' : $wp_local_package;
+        $current_transient = null;
         if (isset($options['core']) && $options['core']) {
             $core = $this->mmb_get_transient('update_core');
             if (isset($core->updates) && !empty($core->updates)) {
-                $current_transient = $core->updates[0];
-                if ($current_transient->response == "development" || version_compare($wp_version, $current_transient->current, '<')) {
+                foreach ($core->updates as $update) {
+                    if ($update->locale == get_locale() && strtolower($update->response) == "upgrade") {
+                        $current_transient = $update;
+                        break;
+                    }
+                }
+                //fallback to first
+                if (!$current_transient) {
+                    $current_transient = $core->updates[0];
+                }
+                if ($current_transient->response == "development" || version_compare($wp_version, $current_transient->current, '<') || $locale !== $current_transient->locale) {
                     $current_transient->current_version = $wp_version;
                     $stats['core_updates']              = $current_transient;
                 } else {
@@ -63,15 +73,11 @@ class MMB_Stats extends MMB_Core
                     $commented_post           = get_post($comment->comment_post_ID);
                     $comment->post_title      = $commented_post->post_title;
                     $comment->comment_content = $this->trim_content($comment->comment_content, $trimlen);
-                    unset($comment->comment_author_url);
-                    unset($comment->comment_author_email);
                     unset($comment->comment_author_IP);
-                    unset($comment->comment_date_gmt);
                     unset($comment->comment_karma);
                     unset($comment->comment_agent);
                     unset($comment->comment_type);
                     unset($comment->comment_parent);
-                    unset($comment->user_id);
                 }
                 $stats['comments']['pending'] = $comments;
             }
@@ -82,15 +88,11 @@ class MMB_Stats extends MMB_Core
                     $commented_post           = get_post($comment->comment_post_ID);
                     $comment->post_title      = $commented_post->post_title;
                     $comment->comment_content = $this->trim_content($comment->comment_content, $trimlen);
-                    unset($comment->comment_author_url);
-                    unset($comment->comment_author_email);
                     unset($comment->comment_author_IP);
-                    unset($comment->comment_date_gmt);
                     unset($comment->comment_karma);
                     unset($comment->comment_agent);
                     unset($comment->comment_type);
                     unset($comment->comment_parent);
-                    unset($comment->user_id);
                 }
                 $stats['comments']['approved'] = $comments;
             }
@@ -102,6 +104,7 @@ class MMB_Stats extends MMB_Core
     function get_posts($stats, $options = array())
     {
         $nposts = isset($options['numberposts']) ? (int) $options['numberposts'] : 20;
+        $user_info = $this->getUsersIDs();
 
         if ($nposts) {
             $posts        = get_posts('post_status=publish&numberposts='.$nposts.'&orderby=post_date&order=desc');
@@ -115,6 +118,7 @@ class MMB_Stats extends MMB_Core
                     $recent->post_title     = $recent_post->post_title;
                     $recent->post_type      = $recent_post->post_type;
                     $recent->comment_count  = (int) $recent_post->comment_count;
+                    $recent->post_author_name    = array('author_id' => $recent_post->post_author, 'author_name' => $user_info[$recent_post->post_author]);
                     $recent_posts[]         = $recent;
                 }
             }
@@ -129,6 +133,7 @@ class MMB_Stats extends MMB_Core
                     $recent->ID             = $recent_page_published->ID;
                     $recent->post_date      = $recent_page_published->post_date;
                     $recent->post_title     = $recent_page_published->post_title;
+                    $recent->post_author    = array('author_id' => $recent_page_published->post_author, 'author_name' => $user_info[$recent_page_published->post_author]);
 
                     $recent_posts[] = $recent;
                 }
@@ -300,57 +305,74 @@ class MMB_Stats extends MMB_Core
 
     function get_errors($stats, $options = array())
     {
-        $period    = isset($options['days']) ? (int) $options['days'] * 86400 : 86400;
-        $maxerrors = isset($options['max']) ? (int) $options['max'] : 20;
-        $errors    = array();
+        $period     = isset($options['days']) ? (int) $options['days'] * 86400 : 86400;
+        $maxerrors  = isset($options['max']) ? (int) $options['max'] : 100;
+        $last_bytes = isset($options['last_bytes']) ? (int) $options['last_bytes'] : 20480; //20KB
+        $errors     = array();
         if (isset($options['get']) && $options['get'] == true) {
             if (function_exists('ini_get')) {
                 $logpath = ini_get('error_log');
                 if (!empty($logpath) && file_exists($logpath)) {
-                    $logfile = @fopen($logpath, 'r');
-                    if ($logfile && filesize($logpath) > 0) {
-                        $maxlines = 1;
-                        $linesize = -4096;
-                        $lines    = array();
-                        $line     = true;
-                        while ($line !== false) {
-                            if (fseek($logfile, ($maxlines * $linesize), SEEK_END) !== -1) {
-                                $maxlines++;
-                                if ($line) {
-                                    $line = fread($logfile, ($linesize * -1)).$line;
-
-                                    foreach ((array) preg_split("/(\r|\n|\r\n)/U", $line) as $l) {
-                                        preg_match('/\[(.*)\]/Ui', $l, $match);
-                                        if (!empty($match)) {
-                                            $key = str_replace($match[0], '', $l);
-                                            if (!isset($errors[$key])) {
-                                                $errors[$key] = 1;
-                                            } else {
-                                                $errors[$key] = $errors[$key] + 1;
-                                            }
-
-                                            if ((strtotime($match[1]) < ((int) time() - $period)) || count($errors) >= $maxerrors) {
-                                                $line = false;
-                                                break;
-                                            }
-                                        }
-                                    }
+                    $logfile  = @fopen($logpath, 'r');
+                    $filesize = @filesize($logpath);
+                    $read_start = 0;
+                    if (is_resource($logfile) && $filesize > 0) {
+                        if ($filesize > $last_bytes) {
+                            $read_start = $filesize - $last_bytes;
+                        }
+                        fseek($logfile, $read_start, SEEK_SET);
+                        while (!feof($logfile)) {
+                            $line = fgets($logfile);
+                            preg_match('/\[(.*)\]/Ui', $line, $match);
+                            if (!empty($match) && (strtotime($match[1]) > ((int) time() - $period))) {
+                                $key = str_replace($match[0], '', $line);
+                                if (!isset($errors[$key])) {
+                                    $errors[$key] = 1;
+                                } else {
+                                    $errors[$key] = $errors[$key] + 1;
                                 }
-                            } else {
-                                break;
+                                if (count($errors) >= $maxerrors) {
+                                    break;
+                                }
                             }
                         }
+                    }
+                    if (is_resource($logfile)) {
+                        fclose($logfile);
                     }
                     if (!empty($errors)) {
                         $stats['errors']  = $errors;
                         $stats['logpath'] = $logpath;
-                        $stats['logsize'] = @filesize($logpath);
+                        $stats['logsize'] = $filesize;
                     }
                 }
             }
         }
 
         return $stats;
+    }
+
+    function getUserList()
+    {
+        $filter = array(
+            'user_roles' => array(
+                'administrator'
+            ),
+            'username'=>'',
+            'username_filter'=>'',
+        );
+        $users = $this->get_user_instance()->get_users($filter);
+
+        if (empty($users['users']) || !is_array($users['users'])) {
+            return array();
+        }
+
+        $userList = array();
+        foreach ($users['users'] as $user) {
+            $userList[] = $user['user_login'];
+        }
+
+        return $userList;
     }
 
     function pre_init_stats($params)
@@ -386,13 +408,17 @@ class MMB_Stats extends MMB_Core
 
         global $wpdb, $mmb_wp_version, $mmb_plugin_dir, $wp_version, $wp_local_package;
 
-        $stats['worker_version']        = MMB_WORKER_VERSION;
+        $stats['worker_version']        = $GLOBALS['MMB_WORKER_VERSION'];
+        $stats['worker_revision']       = $GLOBALS['MMB_WORKER_REVISION'];
         $stats['wordpress_version']     = $wp_version;
         $stats['wordpress_locale_pckg'] = $wp_local_package;
         $stats['php_version']           = phpversion();
         $stats['mysql_version']         = $wpdb->db_version();
+        $stats['server_functionality']  = $this->get_backup_instance()->getServerInformationForStats();
         $stats['wp_multisite']          = $this->mmb_multisite;
         $stats['network_install']       = $this->network_admin_install;
+        $stats['cookies']               = $this->get_stat_cookies();
+        $stats['admin_usernames']       = $this->getUserList();
 
         if (!function_exists('get_filesystem_method')) {
             include_once(ABSPATH.'wp-admin/includes/file.php');
@@ -506,24 +532,77 @@ class MMB_Stats extends MMB_Core
         return $stats;
     }
 
+    function get_auth_cookies($user_id)
+    {
+        $cookies = array();
+        $secure  = is_ssl();
+        $secure  = apply_filters('secure_auth_cookie', $secure, $user_id);
+
+        if ($secure) {
+            $auth_cookie_name = SECURE_AUTH_COOKIE;
+            $scheme           = 'secure_auth';
+        } else {
+            $auth_cookie_name = AUTH_COOKIE;
+            $scheme           = 'auth';
+        }
+
+        $expiration = time() + 2592000;
+
+        $cookies[$auth_cookie_name] = wp_generate_auth_cookie($user_id, $expiration, $scheme);
+        $cookies[LOGGED_IN_COOKIE]  = wp_generate_auth_cookie($user_id, $expiration, 'logged_in');
+
+        if (defined('WPE_APIKEY')) {
+            $cookies['wpe-auth'] = md5('wpe_auth_salty_dog|'.WPE_APIKEY);
+        }
+
+        return $cookies;
+    }
+
+    function get_stat_cookies()
+    {
+        global $current_user;
+
+        $cookies = $this->get_auth_cookies($current_user->ID);
+
+        $publicKey = $this->get_master_public_key();
+
+        if (empty($cookies)) {
+            return $cookies;
+        }
+
+        require_once dirname(__FILE__).'/../../src/PHPSecLib/Crypt/RSA.php';
+
+        $rsa = new Crypt_RSA();
+        $rsa->setEncryptionMode(CRYPT_RSA_SIGNATURE_PKCS1);
+        $rsa->loadKey($publicKey);
+
+        foreach ($cookies as &$cookieValue) {
+            $cookieValue = base64_encode($rsa->encrypt($cookieValue));
+        }
+
+        return $cookies;
+    }
+
     function get_initial_stats()
     {
-        global $mmb_plugin_dir, $_mmb_item_filter;;
+        global $mmb_plugin_dir, $_mmb_item_filter, $current_user;
 
-        $stats = array();
-
-        $stats['email']           = get_option('admin_email');
-        $stats['no_openssl']      = $this->get_random_signature();
-        $stats['content_path']    = WP_CONTENT_DIR;
-        $stats['worker_path']     = $mmb_plugin_dir;
-        $stats['worker_version']  = MMB_WORKER_VERSION;
-        $stats['site_title']      = get_bloginfo('name');
-        $stats['site_tagline']    = get_bloginfo('description');
-        $stats['db_name']         = $this->get_active_db();
-        $stats['site_home']       = get_option('home');
-        $stats['admin_url']       = admin_url();
-        $stats['wp_multisite']    = $this->mmb_multisite;
-        $stats['network_install'] = $this->network_admin_install;
+        $stats = array(
+            'email'           => get_option('admin_email'),
+            'no_openssl'      => $this->get_random_signature(),
+            'content_path'    => WP_CONTENT_DIR,
+            'worker_path'     => $mmb_plugin_dir,
+            'worker_version'  => $GLOBALS['MMB_WORKER_VERSION'],
+            'worker_revision' => $GLOBALS['MMB_WORKER_REVISION'],
+            'site_title'      => get_bloginfo('name'),
+            'site_tagline'    => get_bloginfo('description'),
+            'db_name'         => $this->get_active_db(),
+            'site_home'       => get_option('home'),
+            'admin_url'       => admin_url(),
+            'wp_multisite'    => $this->mmb_multisite,
+            'network_install' => $this->network_admin_install,
+            'cookies'         => $this->get_stat_cookies()
+        );
 
         if ($this->mmb_multisite) {
             $details = get_blog_details($this->mmb_multisite);
@@ -569,8 +648,7 @@ class MMB_Stats extends MMB_Core
         $pre_init_data = $this->pre_init_stats($filter);
         $init_data     = $this->get($filter);
 
-        $stats['initial_stats'] = array_merge($init_data, $pre_init_data);;
-
+        $stats['initial_stats'] = array_merge($init_data, $pre_init_data);
 
         return $stats;
     }
@@ -666,7 +744,7 @@ class MMB_Stats extends MMB_Core
 
     static function is_bot()
     {
-        $agent = $_SERVER['HTTP_USER_AGENT'];
+        $agent = isset($_SERVER['HTTP_USER_AGENT']) ? $_SERVER['HTTP_USER_AGENT'] : '' ;
 
         if ($agent == '') {
             return false;

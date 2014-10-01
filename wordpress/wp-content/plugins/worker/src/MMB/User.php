@@ -22,7 +22,8 @@ class MMB_User extends MMB_Core
             return false;
         }
 
-        extract($args);
+        $user_roles      = isset($args['user_roles']) ? $args['user_roles'] : array();
+        $username_filter = isset($args['username_filter']) ? $args['username_filter'] : '';
 
         $userlevels    = array();
         $level_strings = array();
@@ -55,22 +56,34 @@ class MMB_User extends MMB_Core
 
         $users                  = array();
         $userlevel_qry          = "('".implode("','", $userlevels)."')";
-        $userlevel_fallback_qry = "('%".implode("%','%", $level_strings)."%')";
+        $queryOR ='';
+        if (!empty($level_strings)) {
+            foreach ($level_strings as $level) {
+                if (!empty($queryOR)) {
+                    $queryOR .= ' OR ';
+                }
+                $queryOR .= "meta_value LIKE '%{$level}%'";
+            }
+        }
         $field                  = $wpdb->prefix."capabilities";
+        $field2                 = $wpdb->prefix."user_level";
 
-        $user_metas = $wpdb->get_results("SELECT * from $wpdb->usermeta WHERE meta_key = '$field' AND meta_value IN $userlevel_fallback_qry");
+        $metaQuery = "SELECT * from {$wpdb->usermeta} WHERE meta_key = '{$field}' AND ({$queryOR})";
+        $user_metas = $wpdb->get_results($metaQuery);
+
         if ($user_metas == false || empty($user_metas)) {
-            $user_metas = $wpdb->get_results("SELECT * from $wpdb->usermeta WHERE meta_key = 'wp_user_level' AND meta_value IN $userlevel_qry");
+            $metaQuery = "SELECT * from {$wpdb->usermeta} WHERE meta_key = '{$field2}' AND meta_value IN {$userlevel_qry}";
+            $user_metas = $wpdb->get_results($metaQuery);
         }
 
-        $include = array();
+        $include = array(0 => 0);
         if (is_array($user_metas) && !empty($user_metas)) {
             foreach ($user_metas as $user_meta) {
                 $include[] = $user_meta->user_id;
             }
         }
 
-        $args            = array();
+        $args            = array(0, 0);
         $args['include'] = $include;
         $args['fields']  = 'all_with_meta';
         if (!empty($username_filter)) {

@@ -3,7 +3,7 @@ Contributors: shinephp
 Donate link: https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=vladimir%40shinephp%2ecom&lc=RU&item_name=ShinePHP%2ecom&item_number=User%20Role%20Editor%20WordPress%20plugin&currency_code=USD&bn=PP%2dDonationsBF%3abtn_donateCC_LG%2egif%3aNonHosted
 Tags: user, role, editor, security, access, permission, capability
 Requires at least: 3.5
-Tested up to: 3.8.1
+Tested up to: 4.0
 Stable tag: trunk
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
@@ -28,6 +28,8 @@ Do you need more functionality with quality support in real time? Do you wish re
 Buy [Pro version](htpp://role-editor.com). 
 Pro version includes extra modules:
 <ul>
+<li>Block selected admin menu items for role.</li>
+<li>Block selected widgets under "Appearance" menu for role.</li>
 <li>"Export/Import" module. You can export user roles to the local file and import them then to any WordPress site or other sites of the multi-site WordPress network.</li> 
 <li>Roles and Users permissions management via Network Admin  for multisite configuration. One click Synchronization to the whole network.</li>
 <li>Per posts/pages users access management to post/page editing functionality.</li>
@@ -60,16 +62,20 @@ To read full FAQ section visit [this page](http://www.shinephp.com/user-role-edi
 2. screenshot-2.png Add/Remove roles or capabilities
 3. screenshot-3.png User Capabilities link
 4. screenshot-4.png User Capabilities Editor
+5. screenshot-5.png Bulk change role for users without roles
 
 To read more about 'User Role Editor' visit [this page](http://www.shinephp.com/user-role-editor-wordpress-plugin/) at [shinephp.com](shinephp.com).
 
 = Translations =
 * Catalan: [Efraim Bayarri](http://replicantsfactory.com/);
+* Hebrew: [atar4u](http://atar4u.com)
+* Korean: [Taek Yoon](http://www.ajinsys.com)
+* Persian: Morteza
+* Russian: [Vladimir Garagulya](http://role-editor.com)
 * Spanish: [Dario Ferrer](http://darioferrer.com/);
 * Turkish: [Muhammed YILDIRIM](http://ben.muhammed.im);
-* Hebrew: [atar4u](http://atar4u.com)
 
-Information for translators: All translations are outdated a little and need update.
+Information for translators: All translations (except Russian) are outdated and need update for new added text.
 
 Dear plugin User!
 If you wish to help me with this plugin translation I very appreciate it. Please send your language .po and .mo files to vladimir[at-sign]shinephp.com email. Do not forget include you site link in order I can show it with greetings for the translation help at shinephp.com, plugin settings page and in this readme.txt file.
@@ -78,6 +84,61 @@ Share with me new ideas about plugin further development and link to your site w
 
 
 == Changelog ==
+= 4.16 =
+* 11.09.2014
+* "create_sites" user capability was added to the list of built-in WordPress user capabilities for WordPress multisite. It does not exist by default. But it is used to control "Add New" button at the "Sites" page under WordPress multisite network admin.
+* bug fix: WordPress database prefix value was not used in 2 SQL queries related to the "count users without role" module - updated.
+
+= 4.15 =
+* 08.09.2014
+* Rename role button was added to the URE toolbar. It allows to change user role display name (role ID is always the same). Be careful and double think before rename some built-in WordPress role.
+
+= 4.14.4 =
+* 08.08.2014
+* Missed "manage_sites" user capability was added to the list of built-in WordPress capabilities managed by User Role Editor.
+* Russian translation was updated.
+
+= 4.14.3 =
+* 25.07.2014
+* Integer "1" as default capability value for new added empty role was excluded for the better compatibility with WordPress core. Boolean "true" is used instead as WordPress itself does.
+* Integration with Gravity Forms permissions system was enhanced for WordPress multisite.
+
+= 4.14.2 =
+* 18.07.2014
+* The instance of main plugin class User_Role_Editor is available for other developers now via $GLOBALS['user_role_editor']
+* Compatibility issue with the theme ["WD TechGoStore"](http://wpdance.com) is resolved. This theme loads its JS and CSS stuff for admin backend uncoditionally - for all pages. While the problem is caused just by CSS URE unloads all this theme JS and CSS for optimizaiton purpose for WP admin backend pages where conflict is possible.
+
+= 4.14.1 =
+* 13.06.2014
+* MySQL query optimizing to reduce memory consumption. Thanks to [SebastiaanO](http://wordpress.org/support/topic/allowed-memory-size-exhausted-fixed).
+* Extra WordPress nonce field was removed from the post at main role editor page to exclude nonce duplication.
+* Minor code enhancements.
+* Fixes for some missed translations.
+
+= 4.14 =
+* 16.05.2014
+* Persian translation was added. Thanks to Morteza.
+
+= 4.12 =
+* 22.04.2014
+* Bug was fixed. It had prevented bulk move users without role (--No role for this site--) to the selected role in case such users were shown more than at one WordPress Users page.
+* Korean translation was added. Thanks to [Taek Yoon](http://www.ajinsys.com).
+* Pro version update notes:
+* Use new "Admin Menu" button to block selected admin menu items for role. You need to activate this module at the "Additional Modules". This feature is useful when some of submenu items are restricted by the same user capability,
+e.g. "Settings" submenu, but you wish allow to user work just with part of it. You may use "Admin Menu" dialog as the reference for your work with roles and capabilities as "Admin Menu" shows 
+what user capability restrict access to what admin menu item.
+* Posts/Pages edit restriction feature does not prohibit to add new post/page now. Now it should be managed via 'create_posts' or 'create_pages' user capabilities.
+* If you use Posts/Pages edit restriction by author IDs, there is no need to add user ID to allow him edit his own posts or page. Current user is added to the allowed authors list automatically.
+* New tab "Additional Modules" was added to the User Role Editor options page. As per name all options related to additional modules were moved there.
+
+= 4.11 =
+* 06.04.2014
+* Single-site: It is possible to bulk move users without role (--No role for this site--) to the selected role or automatically created role "No rights" without any capabilities. Get more details at http://role-editor.com/no-role-for-this-site/
+* Plugin uses for dialogs jQuery UI CSS included into WordPress package.
+* Pro version: It is possible to restrict editing posts/pages by its authors user ID (targeted user should have edit_others_posts or edit_others_pages capability).
+* Pro version, multi-site: Superadmin can setup individual lists of themes available for activation to selected sites administrators.
+* Pro version, Gravity Forms access restriction module was tested and compatible with Gravity Forms version 1.8.5
+
 = 4.10 =
 * 15.02.2014
 * Security enhancement: WordPress text translation functions were replaced with more secure esc_html__() and esc_html_e() variants.

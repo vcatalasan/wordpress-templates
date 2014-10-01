@@ -12,14 +12,14 @@ class nggGallery {
 	* Show a error messages
 	*/
 	static function show_error($message) {
-		echo '<div class="wrap"><h2></h2><div class="error" id="error"><p>' . $message . '</p></div></div>' . "\n";
+		echo '<div class="error" id="error"><p>' . $message . '</p></div>';
 	}
 
 	/**
 	* Show a system messages
 	*/
 	static function show_message($message) {
-		echo '<div class="wrap"><h2></h2><div class="updated fade" id="message"><p>' . $message . '</p></div></div>' . "\n";
+		echo '<div class="updated fade" id="message"><p>' . $message . '</p></div>';
 	}
 
 	/**
@@ -268,15 +268,22 @@ class nggGallery {
 
 		if ( ( $custom_template != false ) &&  file_exists ($custom_template) ) {
 			include ( $custom_template );
-		} else if (file_exists (STYLESHEETPATH . "/nggallery/$template_name.php")) {
-			include (STYLESHEETPATH . "/nggallery/$template_name.php");
-		} else if (file_exists (NGGALLERY_ABSPATH . "/view/$template_name.php")) {
+		//search in theme folder
+		} elseif (file_exists (get_stylesheet_directory() . "/nggallery/$template_name.php")) {
+			include (get_stylesheet_directory() . "/nggallery/$template_name.php");
+		//search in WP_CONTENT_DIR
+		} elseif (file_exists (WP_CONTENT_DIR . "/ngg_styles/$template_name.php")) {
+			include (WP_CONTENT_DIR . "/ngg_styles/$template_name.php");
+		//use defaults
+		} elseif (file_exists (NGGALLERY_ABSPATH . "/view/$template_name.php")) {
 			include (NGGALLERY_ABSPATH . "/view/$template_name.php");
-		} else if ( $callback === true ) {
+		} elseif ( $callback === true ) {
             echo "<p>Rendering of template $template_name.php failed</p>";
 		} else {
             //test without the "-template" name one time more
-            $template_name = array_shift( explode('-', $template_name , 2) );
+
+            $explode = explode('-', $template_name, 2);
+            $template_name = array_shift($explode);
             nggGallery::render ($template_name, $vars , true);
 		}
 	}
@@ -314,22 +321,40 @@ class nggGallery {
 
 	}
 
-	/**
-	 * Look for the stylesheet in the theme folder
-	 *
-	 * @return string path to stylesheet
-	 */
+
+    /**
+     * Find where is the gallery stylesheet located.
+     *
+     * Combines several techniques to find out where is the current
+     * gallery stylesheet located.
+     * 20140924: Simplification & Documentation
+     * 20140924: included
+     *
+     * @since 1.9.13
+     * @access static
+     *
+     * @see (none)
+     * @link Filter List http://wpgetready.com/wiki/nextcellent-plugin/nextcellent-filter-list/
+     * @global type $varname Short description.
+     *
+     * @param (none)
+     *
+     * @return bool|mixed|string|void
+     */
+
 	static function get_theme_css_file() {
-
-  		// allow other plugins to include a custom stylesheet
+  		//Allow to include a custom stylesheet, return stylesheet uri
 		$stylesheet = apply_filters( 'ngg_load_stylesheet', false );
-
-		if ( $stylesheet !== false )
-			return ( $stylesheet );
-		elseif ( file_exists (STYLESHEETPATH . '/nggallery.css') )
-			return get_stylesheet_directory_uri() . '/nggallery.css';
-		else
-			return false;
+        //Is there a stylsheet customization?
+		if ( $stylesheet !== false ) {
+            return ($stylesheet); //Yes, return it
+        }
+        //No filter customization. Is the user putting a custom stylesheet on his/her theme?
+        if ( file_exists (get_stylesheet_directory() . '/nggallery.css') ) {
+            return get_stylesheet_directory_uri() . '/nggallery.css'; //Yes, return uri to the custom style
+        }
+        //No filter and no custom style. Bye bye
+		return false;
 	}
 
 	/**
@@ -586,6 +611,17 @@ class nggGallery {
     static function nextgen_version() {
         global $ngg;
         echo apply_filters('show_nextgen_version', '<!-- <meta name="NextGEN" version="'. $ngg->version . '" /> -->' . "\n");
+    }
+
+    /**
+     * Prevents injection filtering HTML Code
+     * 20140604: Improved based on suggestions of jayque9
+     * http://wordpress.org/support/topic/prevent-removal-of-html-code-from-image-descriptions
+     */
+    static function suppress_injection
+    ($html_text) {
+        global $allowedposttags;
+        return wp_kses(stripslashes($html_text),$allowedposttags);
     }
 }
 ?>

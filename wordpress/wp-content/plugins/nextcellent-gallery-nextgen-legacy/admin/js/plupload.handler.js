@@ -23,26 +23,20 @@ function initUploader() {
     		});
     	}*/
         
-        // enable or disable the resize feature
-		jQuery('#image_resize').bind('change', function() {
-			var arg = jQuery(this).prop('checked');
-			setResize( arg );
-            
-			if ( arg )
-				setUserSetting('ngg_upload_resize', '1');
-			else
-				deleteUserSetting('ngg_upload_resize');            
-		});
-        
-        // get user settings from cookie
-        setResize( getUserSetting('ngg_upload_resize', false) );
-        
         if ( uploader.features.dragdrop )
 				jQuery('.ngg-dragdrop-info').show();
         	
         jQuery("#uploadimage_btn").after("<input class='button-primary' type='button' name='uploadimage' id='plupload_btn' value='" + uploader.settings.i18n.upload + "' />")
                                   .remove();
-    	jQuery("#plupload_btn").click( function() { uploader.start(); } );
+    	jQuery("#plupload_btn").click( function() {
+			//check if a gallery is selected
+			if (jQuery('#galleryselect').val() > "0") {
+				uploader.start(); 
+			} else {
+				event.preventDefault();
+				alert( pluploadL10n.no_gallery );
+			}
+		});
 	}); 
 }
 
@@ -67,17 +61,10 @@ function fileQueued( fileObj ) {
 function uploadStart(fileObj) {
     debug('[uploadStart]');
     nggProgressBar.init(nggAjaxOptions);
-	// check if a gallery is selected
-	if (jQuery('#galleryselect').val() > "0") {
-	    debug('[gallery selected]');
-		// update the selected gallery in the post_params 
-		uploader.settings.multipart_params.galleryselect = jQuery('#galleryselect').val();
-	} else {
-        debug('[gallery not selected]');
-		jQuery('#uploadimage_form').prepend("<input type=\"hidden\" name=\"swf_callback\" value=\"-1\">");
-		jQuery("#uploadimage_form").submit();
-	}    
-	return true;
+	debug('[gallery selected]');
+	// update the selected gallery in the post_params 
+	uploader.settings.multipart_params.galleryselect = jQuery('#galleryselect').val();   
+	return false;
 }
 
 // called during the upload progress
@@ -122,33 +109,34 @@ function cancelUpload() {
 
 function uploadError(fileObj, errorCode, message) {
     debug('[uploadError]', errorCode, message);
+	error_name = fileObj.name + ': ';
 	switch (errorCode) {
 		case plupload.FAILED:
-			error_name = fileObj.name + " : " + pluploadL10n.upload_failed;
+			message = pluploadL10n.upload_failed;
 			break;
 		case plupload.FILE_EXTENSION_ERROR:
-			error_name = fileObj.name + " : " + pluploadL10n.invalid_filetype;
+			message = pluploadL10n.invalid_filetype;
 			break;
 		case plupload.FILE_SIZE_ERROR:
-			error_name = fileObj.name + " : " + pluploadL10n.upload_limit_exceeded;
+			message = pluploadL10n.file_exceeds_size_limit;
 			break;
 		case plupload.IMAGE_FORMAT_ERROR:
-			error_name = fileObj.name + " : " + pluploadL10n.not_an_image;
+			message = pluploadL10n.not_an_image;
 			break;
 		case plupload.IMAGE_MEMORY_ERROR:
-			error_name = fileObj.name + " : " + pluploadL10n.image_memory_exceeded;
+			message = pluploadL10n.image_memory_exceeded;
 			break;
 		case plupload.IMAGE_DIMENSIONS_ERROR:
-			error_name = fileObj.name + " : " + pluploadL10n.image_dimensions_exceeded;
+			message = pluploadL10n.image_dimensions_exceeded;
 			break;
 		case plupload.GENERIC_ERROR:
-			error_name = pluploadL10n.upload_failed;
+			message = pluploadL10n.upload_failed;
 			break;
 		case plupload.IO_ERROR:
-			error_name = pluploadL10n.io_error;
+			message = pluploadL10n.io_error;
 			break;
 		case plupload.HTTP_ERROR:
-			error_name = pluploadL10n.http_error;
+			message = pluploadL10n.http_error;
 			break;
 		case plupload.INIT_ERROR:
             /* what should we do in this case ? */
@@ -156,7 +144,7 @@ function uploadError(fileObj, errorCode, message) {
 			//jQuery('.upload-html-bypass').hide();
 			break;
 		case plupload.SECURITY_ERROR:
-			error_name = pluploadL10n.security_error;
+			message = pluploadL10n.security_error;
 			break;
 		case plupload.UPLOAD_ERROR.UPLOAD_STOPPED:
 		case plupload.UPLOAD_ERROR.FILE_CANCELLED:
@@ -164,24 +152,10 @@ function uploadError(fileObj, errorCode, message) {
 		default:
 			FileError(fileObj, pluploadL10n.default_error);
 	}
-	nggProgressBar.addNote("<strong>ERROR " + error_name + " </strong>: " + message);
+	//nggProgressBar.addNote("<strong>ERROR " + error_name + " </strong>: " + message);
+	jQuery('#plupload-upload-ui').prepend('<div id="file-' + fileObj.id + '" class="error"><p style="margin: auto;">' + error_name + message + '</p></div>');
 	jQuery("#" + fileObj.id).hide("slow");
 	jQuery("#" + fileObj.id).remove();
-}
-
-// client side resize feature
-function setResize(arg) {
-	if ( arg ) {
-        debug('[enable resize]');
-		if ( uploader.features.jpgresize )
-			uploader.settings['resize'] = { width: resize_width, height: resize_height, quality: 100 };
-		else
-			uploader.settings.multipart_params.image_resize = true;
-	} else {
-        debug('[disable resize]');
-		delete(uploader.settings.resize);
-		delete(uploader.settings.multipart_params.image_resize);
-	}
 }
 
 function debug() {

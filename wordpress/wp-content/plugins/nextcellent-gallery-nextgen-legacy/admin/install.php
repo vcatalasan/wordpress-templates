@@ -10,7 +10,7 @@ if(preg_match('#' . basename(__FILE__) . '#', $_SERVER['PHP_SELF'])) { die('You 
  */
 function nggallery_install () {
 
-   	global $wpdb , $wp_roles, $wp_version;
+   	global $wpdb;
 
 	// Check for capability
 	if ( !current_user_can('activate_plugins') )
@@ -40,7 +40,7 @@ function nggallery_install () {
 	// add charset & collate like wp core
 	$charset_collate = '';
 
-	if ( version_compare(mysql_get_server_info(), '4.1.0', '>=') ) {
+	if ( version_compare($wpdb->get_var("SELECT VERSION() AS `mysql_version`"), '4.1.0', '>=') ) {
 		if ( ! empty($wpdb->charset) )
 			$charset_collate = "DEFAULT CHARACTER SET $wpdb->charset";
 		if ( ! empty($wpdb->collate) )
@@ -207,7 +207,7 @@ function ngg_default_options() {
 
 	// CSS Style
 	$ngg_options['activateCSS']			= true;							// activate the CSS file
-	$ngg_options['CSSfile']				= 'nggallery.css';  			// set default css filename
+	$ngg_options['CSSfile']				= NGGALLERY_ABSPATH . 'css/nggallery.css';  			// set default css filename
 
 	// special overrides for WPMU
 	if (is_multisite()) {

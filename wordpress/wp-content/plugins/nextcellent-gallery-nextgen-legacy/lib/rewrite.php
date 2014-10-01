@@ -8,7 +8,8 @@
 *
 * @package NextGEN Gallery
 * @author Alex Rabe
-* 
+*
+ * 20140518 FZSM Moved initialization to this class. Don't need to spread the code everywhere.
 */
 class nggRewrite {
 
@@ -86,7 +87,9 @@ class nggRewrite {
 
 		//TODO: Watch out for ticket http://trac.wordpress.org/ticket/6627
 		if ($wp_rewrite->using_permalinks() && $this->options['usePermalinks'] ) {
-			$post = &get_post(get_the_ID());
+
+            $gID  = get_the_ID();
+            $post = get_post($gID);
 
 			// If the album is not set before get it from the wp_query ($_GET) 
             if ( !isset ($args['album'] ) )
@@ -416,10 +419,16 @@ class nggRewrite {
             $rewrite_rules = array_merge($rewrite_rules, array($final_match => $final_query));
 
         }
-
-		return $rewrite_rules;        
+		return $rewrite_rules;
     }
 	
 }  // of nggRewrite CLASS
+
+    global $nggRewrite;
+
+    if ( class_exists('nggRewrite') ){
+        $nggRewrite = new nggRewrite();
+    }
+
 
 ?>

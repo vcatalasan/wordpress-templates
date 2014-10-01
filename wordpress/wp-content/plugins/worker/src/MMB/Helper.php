@@ -318,7 +318,7 @@ class MMB_Helper
         $nonce->setValue($message_id);
         if (!$nonce->verify()) {
             return array(
-                'error' => 'Invalid nonce used. Please try again'
+                'error' => 'Invalid nonce used. Please contact support'
             );
         }
 
@@ -542,5 +542,58 @@ class MMB_Helper
         }
 
         return $val;
+    }
+    
+    function w3tc_flush($flushAll = false)
+    {
+        if ($flushAll) {
+            if (function_exists('w3tc_pgcache_flush')) {
+                w3tc_pgcache_flush();
+
+            }
+
+            if (function_exists('w3tc_dbcache_flush')) {
+                w3tc_dbcache_flush();
+
+            }
+        }
+
+        if (function_exists('w3tc_objectcache_flush')) {
+            w3tc_objectcache_flush();
+        }
+    }
+
+    protected function notifyMyself($functionName, $args = array())
+    {
+        global $current_user;
+        $nonce = wp_create_nonce("mmb-fork-nonce");
+        $cron_url      = site_url('index.php');
+        $public_key    = get_option('_worker_public_key');
+        $args          = array(
+            'body'      => array(
+                'mwp_forked_action' => $functionName,
+                'args'              => json_encode($args),
+                'mmb_fork_nonce'    => $nonce,
+                'public_key'        => $public_key,
+                'username'          => $current_user->user_login,
+            ),
+            'timeout'   => 0.01,
+            'blocking'  => false,
+            'sslverify' => apply_filters('https_local_ssl_verify', true)
+        );
+        wp_remote_post($cron_url, $args);
+    }
+
+    public function getUsersIDs()
+    {
+        global $wpdb;
+        $users_authors = array();
+        $users         = $wpdb->get_results("SELECT ID as user_id, display_name FROM $wpdb->users WHERE user_status=0");
+
+        foreach ($users as $user_key => $user_val) {
+            $users_authors[$user_val->user_id] = $user_val->display_name;
+        }
+
+        return $users_authors;
     }
 }

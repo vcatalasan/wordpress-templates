@@ -15,7 +15,7 @@
 	//some globals
 	global $wpdb, $gateway_environment, $logstr;
 	$logstr = "";	//will put debug info here and write to ipnlog.txt
-	
+		
 	//validate?
 	if(!pmpro_ipnValidate())
 	{
@@ -31,12 +31,14 @@
 	$item_number = pmpro_getParam("item_number", "POST");
 	$payment_status = pmpro_getParam("payment_status", "POST");
 	$payment_amount = pmpro_getParam("payment_amount", "POST");
-	$payment_currency = pmpro_getParam("payment_currency", "POST");
-	$txn_id = pmpro_getParam("txn_id", "POST");
+	$payment_currency = pmpro_getParam("payment_currency", "POST");	
 	$receiver_email = pmpro_getParam("receiver_email", "POST");	
 	$business_email = pmpro_getParam("business", "POST");
 	$payer_email = pmpro_getParam("payer_email", "POST");			
 	$recurring_payment_id = pmpro_getParam("recurring_payment_id", "POST");
+
+    if(empty($subscr_id))
+        $subscr_id = $recurring_payment_id;
 	
 	//check the receiver_email	
 	if(!pmpro_ipnCheckReceiverEmail(array(strtolower($receiver_email), strtolower($business_email))))
@@ -122,8 +124,10 @@
 			//subscription payment, completed or failure?
 			if($_POST['payment_status'] == "Completed")
 				pmpro_ipnSaveOrder($txn_id, $last_subscr_order);
-			else
+			elseif($_POST['payment_status'] == "Failed")
 				pmpro_ipnFailedPayment($last_subscr_order);
+			else
+				ipnlog('Payment status is ' . $_POST['payment_status'] . '.');
 				
 			pmpro_ipnExit();
 		}
@@ -425,26 +429,30 @@
 	{
 		//filter for level
 		$morder->membership_level = apply_filters("pmpro_ipnhandler_level", $morder->membership_level, $morder->user_id);
-					
+				
 		//fix expiration date		
 		if(!empty($morder->membership_level->expiration_number))
 		{
-			$enddate = "'" . date("Y-m-d", strtotime("+ " . $morder->membership_level->expiration_number . " " . $morder->membership_level->expiration_period)) . "'";
+			$enddate = "'" . date("Y-m-d", strtotime("+ " . $morder->membership_level->expiration_number . " " . $morder->membership_level->expiration_period, current_time("timestamp"))) . "'";
 		}
 		else
 		{
 			$enddate = "NULL";
 		}
 		
-		//get discount code		(NOTE: but discount_code isn't set here. How to handle discount codes for PayPal Standard?)
-		$use_discount_code = true;		//assume yes
-		if(!empty($discount_code) && !empty($use_discount_code))
-			$discount_code_id = $wpdb->get_var("SELECT id FROM $wpdb->pmpro_discount_codes WHERE code = '" . $discount_code . "' LIMIT 1");
+		//get discount code
+		$morder->getDiscountCode();
+		if(!empty($morder->discount_code))
+		{		
+			//update membership level
+			$morder->getMembershipLevel(true);
+			$discount_code_id = $morder->discount_code->id;
+		}
 		else
 			$discount_code_id = "";
-		
-		//set the start date to NOW() but allow filters
-		$startdate = apply_filters("pmpro_checkout_start_date", "NOW()", $morder->user_id, $morder->membership_level);
+				
+		//set the start date to current_time('timestamp') but allow filters
+		$startdate = apply_filters("pmpro_checkout_start_date", "'" . current_time('mysql') . "'", $morder->user_id, $morder->membership_level);
 		
 		//custom level to change user to
 		$custom_level = array(
@@ -460,7 +468,7 @@
 			'trial_limit' => $morder->membership_level->trial_limit,
 			'startdate' => $startdate,
 			'enddate' => $enddate);
-
+		
 		global $pmpro_error;
 		if(!empty($pmpro_error))
 		{
@@ -483,7 +491,7 @@
 			//add discount code use
 			if(!empty($discount_code) && !empty($use_discount_code))
 			{
-				$wpdb->query("INSERT INTO $wpdb->pmpro_discount_codes_uses (code_id, user_id, order_id, timestamp) VALUES('" . $discount_code_id . "', '" . $morder->user_id . "', '" . $morder->id . "', now())");
+				$wpdb->query("INSERT INTO $wpdb->pmpro_discount_codes_uses (code_id, user_id, order_id, timestamp) VALUES('" . $discount_code_id . "', '" . $morder->user_id . "', '" . $morder->id . "', '" . current_time('mysql') . "");
 			}									
 		
 			//save first and last name fields

@@ -2,8 +2,8 @@
 Contributors: strangerstudios
 Tags: memberships, membership, authorize.net, ecommerce, paypal, stripe, braintree, restrict access, restrict content, directory site, payflow
 Requires at least: 3.5
-Tested up to: 3.8.1
-Stable tag: 1.7.9.1
+Tested up to: 4.0
+Stable tag: 1.7.14.2
 
 The easiest way to GET PAID with your WordPress site. Flexible content control by Membership Level, Reports, Affiliates and Discounts
 
@@ -102,6 +102,75 @@ Not sure? You can find out by doing a bit a research.
 4. Offer Membership Discounts with specific price rules (restricted by level, unique pricing for each level, # of uses, expiration date.)
 
 == Changelog == 
+= 1.7.14.2 =
+* BUG: Removed the debug call to d($...) that was left in preheaders/checkout.php and would show up when checkout forms were submitted with empty fields. (Thanks, Nicolas)
+
+= 1.7.14.1 =
+* BUG: Fixed warnings in PayPal Express class that could break redirects at checkout. (Thanks, Adam Warner)
+* BUG: Fixed issue where new users who checked out with Braintree weren't having their customerid's saved, which led to subscription syncronization issues if they checked out again or updated their billing.
+* BUG: Fixed warnings in the membership-billing page.
+* BUG: Fixed false positive "There are JavaScript errors on the page. Please contact the webmaster." errors.
+* BUG: Fixed issue where users on some sites running 1.7.14 could not logout.
+* OTHER: Changed the CSS class of the checkout button generated via [checkout_button] shortcode or pmpro_getCheckoutButton() function from "btn btn-primary" to "pmpro_btn" to match other buttons generated with PMPro.
+
+= 1.7.14 =
+* BUG: Fixed bug where level cost would sometimes have incorrect pluralization of months/weeks/etc. (Thanks, Kevin Ackerman)
+* BUG/ENHANCEMENT: Now checking the child and parent theme for email_header.html and email_footer.html files to use for emails. The child theme is checked first.
+* ENHANCEMENT: Added pmpro_getfile_before_readfile hook (passes $filename and $mimetype params) in getfile.php
+* BUG/ENHANCEMENT: getMembershipLevel method of MemberOrder can now handle when discount_code property is an object. Also, the IPN Handler and 2Checkout handler will now try to get the discount code for the order to correctly update the users pmpro_memberships_users entry.
+* BUG: Removed extra class attribute from CVV field that interfered with the required * JS code and some other CSS/JS-related things. (Thanks, catapult)
+* ENHANCEMENT: Added code to redirect to the redirect_url if you pass a redirect_url to the login page and the user is already logged in. Updated the links in email confirmations to use login links with redirects instead of direct links.
+* EHANCEMENT: Added pmpro_email_attachments filter, which can be used to add attachments to PMPro emails that are sent out. E.g., https://gist.github.com/strangerstudios/c4e771dca8723613bce3
+
+= 1.7.13.1 =
+* Fixed bug introduced in 1.7.12 where discount code uses were not being tracked.
+* Added pmpro_check_discount_code filter so you can do your own checks on discount codes.
+
+= 1.7.13 =
+* Added Danish (da_DK) translation. (Thanks, Mikael)
+* Fixed bugs with timestamps in various places (especially around trial dates) introduced in 1.7.12
+* Another fix to keep PMPro from sending "undefined undefined" as the name to Stripe when the 'don't show billing fields' option is chosen.
+* $pmpro_stripe_verify_address flag defaults to same value of Stripe's showbillingaddress option now.
+* Changed the priority of pmpro_applydiscountcode_init hooking on init to 11 so pmpro_init() will run before and setup pmpro_currency_symbol among other things. (Thanks, semyou on GitHub.)
+* Explicitly setting $current_user->membership_level in a few places to avoid issues where current_user is overwritten between init and when we try to use it.
+* Avoiding a warning in pmpro_getMetavalues() function. (Thanks, Scott Sousa)
+* Added target="_blank" to help links on admin pages. (Thanks, AntonVrba on GitHub)
+
+= 1.7.12 =
+* Now including expiration text in text that is updated when a discount code is used. (Thanks, John Zeiger)
+* Making sure that $myuser->membership_level is set in pmpro_has_membership_access().
+* Added Norwegian locale files. (Thanks, Maritk)
+* Added Turkish locale files. (Thanks, yasinkuyu on GitHub.)
+* Fixed error where "undefined" was being passed to Stripe for the name.
+* Fixed error with setting enddates on the edit user page for users with multiple "active" memberships.
+* "Renew" link will show up on levels page only if the user has the level and it is not recurring and has an enddate.
+* Stripe gateway is using $pmpro_currency global instead of getting value via pmpro_getOption, so it can be overridden via code like https://gist.github.com/strangerstudios/8806443
+* Payflow Pro gateway is now passing the currency code to the API for non-US currencies. (Thanks
+
+= 1.7.11 =
+* Added "Filter searches and archives?" setting to advanced settings tab. If you had "Show excerpts to non-members?" set to No before, then this will be set to Yes after upgrade. But now you can show excerpts on single post pages while still hiding restricted content from searches and archives.
+
+= 1.7.10.2 =
+* Fixed MySQL warning/error that was introduced in 1.7.10.1 and showing for some people who had "hide excerpts" enabled.
+
+= 1.7.10.1 =
+* Fixed bug where the $pmpro_levels global would sometimes not include all levels on the levels page. (A better fix for this is coming in v2.0.)
+* Fixed bug in pmpro_getMemberDays that sometimes reported more days than the user had really been a member. (Thanks, surefireweb)
+* Fixed bug where search results were being incorrectly filtered. The pmpro_search_filter() function in includes/content.php hides member content from non-members if the "show exceprts" setting is set to false.
+* Now checking specifically for payment_status = 'Failed' in the IPN handler before sending off the payment failed emails. (There may be other statuses we want to consider as "failures" as well, but we want to avoid failing on "pending" statuses/etc.)
+
+= 1.7.10 =
+* Added getGatewaySubscriptionStatus() and getGatewayTransactionStatus() methods to the MemberOrder class. These are implemented for PayPalExpress right now and will hit the gateway API to return information on a subscription or transaction.
+* Added pmpro_memberslist_expires_column filter to members list. $order is passed as second parameter. Use this to filter the date or "Never" shown in the Expires column.
+* No longer showing "Membership Levels" link in dashboard menu if a user has access to other PMPro settings pages, but not the membership levels page.
+* Added pmpro_applydiscountcode_return_js hook. http://www.paidmembershipspro.com/hook/pmpro_applydiscountcode_return_js/
+* Fixed formatting of the level cost when a discount code is applied via AJAX.
+* Removed extra $ in checkout_check.html email template.
+* Fixed bug where pmpro_setOption was not working for array values in $_POST, e.g. the hideadlevels setting on the Advanced Settings page.
+* pmpro_getMembershipCategories($level_id) now returns an array of category IDs instead of an array of arrays.
+* Swapped all _x function calls to use __ or _e so they are translated.
+* Initial Czech Republic (cs_CZ) translation files. (Thanks, Petr Hlaváček)
+
 = 1.7.9.1 =
 * Firing activation hook on upgrade so menu doesn't disappear.
 

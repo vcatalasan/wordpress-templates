@@ -232,22 +232,26 @@
 		//fix expiration date		
 		if(!empty($morder->membership_level->expiration_number))
 		{
-			$enddate = "'" . date("Y-m-d", strtotime("+ " . $morder->membership_level->expiration_number . " " . $morder->membership_level->expiration_period)) . "'";
+			$enddate = "'" . date("Y-m-d", strtotime("+ " . $morder->membership_level->expiration_number . " " . $morder->membership_level->expiration_period, current_time("timestamp"))) . "'";
 		}
 		else
 		{
 			$enddate = "NULL";
 		}
 		
-		//get discount code		(NOTE: but discount_code isn't set here. How to handle discount codes for 2checkout?)
-		$use_discount_code = true;		//assume yes
-		if(!empty($discount_code) && !empty($use_discount_code))
-			$discount_code_id = $wpdb->get_var("SELECT id FROM $wpdb->pmpro_discount_codes WHERE code = '" . $discount_code . "' LIMIT 1");
+		//get discount code
+		$morder->getDiscountCode();
+		if(!empty($morder->discount_code))
+		{		
+			//update membership level
+			$morder->getMembershipLevel(true);
+			$discount_code_id = $morder->discount_code->id;
+		}
 		else
 			$discount_code_id = "";
 		
-		//set the start date to NOW() but allow filters
-		$startdate = apply_filters("pmpro_checkout_start_date", "NOW()", $morder->user_id, $morder->membership_level);
+		//set the start date to current_time('mysql') but allow filters
+		$startdate = apply_filters("pmpro_checkout_start_date", "'" . current_time('mysql') . "'", $morder->user_id, $morder->membership_level);
 		
 		//custom level to change user to
 		$custom_level = array(
@@ -284,7 +288,7 @@
 			//add discount code use
 			if(!empty($discount_code) && !empty($use_discount_code))
 			{
-				$wpdb->query("INSERT INTO $wpdb->pmpro_discount_codes_uses (code_id, user_id, order_id, timestamp) VALUES('" . $discount_code_id . "', '" . $morder->user_id . "', '" . $morder->id . "', now())");
+				$wpdb->query("INSERT INTO $wpdb->pmpro_discount_codes_uses (code_id, user_id, order_id, timestamp) VALUES('" . $discount_code_id . "', '" . $morder->user_id . "', '" . $morder->id . "', '" . current_time('mysql') . "')");
 			}									
 		
 			//save first and last name fields

@@ -4,14 +4,14 @@
 * Plugin URI:  http://ovirium.com
 * Description: Plugin will create lots of users, groups, topics, activity items - useful for testing purpose.
 * Author:      slaFFik
-* Version:     1.0.3
+* Version:     1.0.4
 * Author URI:  http://ovirium.com
 */
 
 // Exit if accessed directly
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-define( 'BPDD_VERSION', '1.0.3' );
+define( 'BPDD_VERSION', '1.0.4' );
 
 add_action( 'bp_init', 'bpdd_init' );
 function bpdd_init() {
@@ -260,8 +260,16 @@ function bpdd_import_users() {
         )) ;
         $query[] = $wpdb->last_query;
 
-        bp_update_user_meta( $cur, 'last_activity', bpdd_get_random_date( 5 ) );
+        // BuddyPress 1.9+
+        if( function_exists('bp_update_user_last_activity')){
+            bp_update_user_last_activity( $cur, bpdd_get_random_date( 5 ) );
+        } else {
+            // BuddyPress 1.8.x and below
+            bp_update_user_meta( $cur, 'last_activity', bpdd_get_random_date( 5 ) );
+        }
+
         bp_update_user_meta( $cur, 'notification_messages_new_message', 'no' );
+
         $users[] = $cur;
     }
 
@@ -370,8 +378,9 @@ function bpdd_import_groups( $users = false ) {
     require( dirname( __FILE__ ) . '/data/groups.php' );
 
     foreach ( $groups as $group ) {
+        $creator_id = is_object($users[array_rand( $users )]) ? $users[array_rand( $users )]->ID : $users[array_rand( $users )];
         $cur = groups_create_group( array(
-            'creator_id'   => $users[array_rand( $users )]->ID,
+            'creator_id'   => $creator_id,
             'name'         => $group['name'],
             'description'  => $group['description'],
             'slug'         => groups_check_slug( sanitize_title( esc_attr( $group['name'] ) ) ),

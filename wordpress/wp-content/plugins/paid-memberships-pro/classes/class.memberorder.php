@@ -217,6 +217,9 @@
 			global $wpdb;
 			$this->discount_code = $wpdb->get_row("SELECT dc.* FROM $wpdb->pmpro_discount_codes dc LEFT JOIN $wpdb->pmpro_discount_codes_uses dcu ON dc.id = dcu.code_id WHERE dcu.order_id = '" . $this->id . "' LIMIT 1");
 			
+			//filter @since v1.7.14
+			$this->discount_code = apply_filters("pmpro_order_discount_code", $this->discount_code, $this);
+			
 			return $this->discount_code;
 		}
 		
@@ -252,7 +255,13 @@
 			//okay, do I have a discount code to check? (if there is no membership_level->membership_id value, that means there was no entry in memberships_users)
 			if(!empty($this->discount_code) && empty($this->membership_level->membership_id))
 			{
-				$sqlQuery = "SELECT l.id, cl.*, l.name, l.description, l.allow_signups FROM $wpdb->pmpro_discount_codes_levels cl LEFT JOIN $wpdb->pmpro_membership_levels l ON cl.level_id = l.id LEFT JOIN $wpdb->pmpro_discount_codes dc ON dc.id = cl.code_id WHERE dc.code = '" . $this->discount_code . "' AND cl.level_id = '" . $this->membership_id . "' LIMIT 1";			
+				if(!empty($this->discount_code->code))
+					$discount_code = $this->discount_code->code;
+				else
+					$discount_code = $this->discount_code;
+				
+				$sqlQuery = "SELECT l.id, cl.*, l.name, l.description, l.allow_signups FROM $wpdb->pmpro_discount_codes_levels cl LEFT JOIN $wpdb->pmpro_membership_levels l ON cl.level_id = l.id LEFT JOIN $wpdb->pmpro_discount_codes dc ON dc.id = cl.code_id WHERE dc.code = '" . $discount_code . "' AND cl.level_id = '" . $this->membership_id . "' LIMIT 1";
+				
 				$this->membership_level = $wpdb->get_row($sqlQuery);
 			}
 			
@@ -278,7 +287,7 @@
 			if($tax_state && $tax_rate)
 			{
 				//we have values, is this order in the tax state?
-				if(trim(strtoupper($this->billing->state)) == trim(strtoupper($tax_state)))
+				if(!empty($this->billing) && trim(strtoupper($this->billing->state)) == trim(strtoupper($tax_state)))
 				{															
 					//return value, pass through filter
 					$tax = round((float)$price * (float)$tax_rate, 2);					
@@ -482,7 +491,7 @@
 									   '" . $this->gateway_environment . "', 
 									   '" . esc_sql($this->payment_transaction_id) . "',
 									   '" . esc_sql($this->subscription_transaction_id) . "',
-									   now(),
+									   '" . current_time('mysql') . "',
 									   '" . esc_sql($this->affiliate_id) . "',
 									   '" . esc_sql($this->affiliate_subid) . "',
 									    '" . esc_sql($this->notes) . "'
@@ -509,7 +518,7 @@
 			
 			while(empty($code))
 			{
-				$scramble = md5(AUTH_KEY . time() . SECURE_AUTH_KEY);			
+				$scramble = md5(AUTH_KEY . current_time('timestamp') . SECURE_AUTH_KEY);
 				$code = substr($scramble, 0, 10);
 				$code = apply_filters("pmpro_random_code", $code, $this);	//filter				
 				$check = $wpdb->get_var("SELECT id FROM $wpdb->pmpro_membership_orders WHERE code = '$code' LIMIT 1");				
@@ -579,6 +588,16 @@
 		{
 			return $this->Gateway->update($this);						
 		}									
+		
+		function getGatewaySubscriptionStatus()
+		{
+			return $this->Gateway->getSubscriptionStatus($this);
+		}
+		
+		function getGatewayTransactionStatus()
+		{
+			return $this->Gateway->getTransactionStatus($this);
+		}
 		
 		function deleteMe()
 		{

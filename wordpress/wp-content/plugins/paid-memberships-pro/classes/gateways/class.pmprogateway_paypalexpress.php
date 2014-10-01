@@ -12,7 +12,7 @@
 		{				
 			if(pmpro_isLevelRecurring($order->membership_level))
 			{
-				$order->ProfileStartDate = date("Y-m-d", strtotime("+ " . $order->BillingFrequency . " " . $order->BillingPeriod)) . "T0:0:0";
+				$order->ProfileStartDate = date("Y-m-d", strtotime("+ " . $order->BillingFrequency . " " . $order->BillingPeriod, current_time("timestamp"))) . "T0:0:0";
 				$order->ProfileStartDate = apply_filters("pmpro_profile_start_date", $order->ProfileStartDate, $order);
 				return $this->subscribe($order);				
 			}
@@ -47,7 +47,7 @@
 			//paypal profile stuff
 			$nvpStr = "";
 			$nvpStr .="&AMT=" . $initial_payment . "&CURRENCYCODE=" . $pmpro_currency;
-			if(!empty($order->ProfileStartDate) && strtotime($order->ProfileStartDate) > 0)
+			if(!empty($order->ProfileStartDate) && strtotime($order->ProfileStartDate, current_time("timestamp")) > 0)
 				$nvpStr .= "&PROFILESTARTDATE=" . $order->ProfileStartDate;			
 			if(!empty($order->BillingFrequency))
 				$nvpStr .= "&BILLINGPERIOD=" . $order->BillingPeriod . "&BILLINGFREQUENCY=" . $order->BillingFrequency . "&AUTOBILLAMT=AddToNextBilling&L_BILLINGTYPE0=RecurringPayments";
@@ -89,6 +89,10 @@
 			
 			$nvpStr .= "&CANCELURL=" . urlencode(pmpro_url("levels"));									
 			
+			$account_optional = apply_filters('pmpro_paypal_account_optional', true);
+            		if ($account_optional)
+                		$nvpStr .= '&SOLUTIONTYPE=Sole&LANDINGPAGE=Billing';
+			
 			$nvpStr = apply_filters("pmpro_set_express_checkout_nvpstr", $nvpStr, $order);						
 			
 			///echo str_replace("&", "&<br />", $nvpStr);
@@ -98,9 +102,8 @@
 						
 			if("SUCCESS" == strtoupper($this->httpParsedResponseAr["ACK"]) || "SUCCESSWITHWARNING" == strtoupper($this->httpParsedResponseAr["ACK"])) {
 				$order->status = "token";				
-				$order->paypal_token = urldecode($this->httpParsedResponseAr['TOKEN']);
-				$order->subscription_transaction_id = urldecode($this->httpParsedResponseAr['PROFILEID']);
-												
+				$order->paypal_token = urldecode($this->httpParsedResponseAr['TOKEN']);				
+								
 				//update order
 				$order->saveOrder();							
 							
@@ -193,7 +196,7 @@
 			if("SUCCESS" == strtoupper($this->httpParsedResponseAr["ACK"]) || "SUCCESSWITHWARNING" == strtoupper($this->httpParsedResponseAr["ACK"])) {			
 				$order->payment_transaction_id = urldecode($this->httpParsedResponseAr['TRANSACTIONID']);								
 				$order->status = "success";				
-				
+
 				//update order
 				$order->saveOrder();	
 				
@@ -240,7 +243,7 @@
 			$nvpStr .= "&DESC=" . urlencode(substr($order->membership_level->name . " at " . get_bloginfo("name"), 0, 127));
 			
 			//if billing cycles are defined						
-			if($order->TotalBillingCycles)
+			if(!empty($order->TotalBillingCycles))
 				$nvpStr .= "&TOTALBILLINGCYCLES=" . $order->TotalBillingCycles;
 			
 			//if a trial period is defined
@@ -303,7 +306,33 @@
 								
 				return false;				
 			}
-		}	
+		}
+
+		function getSubscriptionStatus(&$order)
+		{			
+			if(empty($order->subscription_transaction_id))
+				return false;
+			
+			//paypal profile stuff
+			$nvpStr = "";			
+			$nvpStr .= "&PROFILEID=" . urlencode($order->subscription_transaction_id);						
+						
+			$this->httpParsedResponseAr = $this->PPHttpPost('GetRecurringPaymentsProfileDetails', $nvpStr);						
+											
+			if("SUCCESS" == strtoupper($this->httpParsedResponseAr["ACK"]) || "SUCCESSWITHWARNING" == strtoupper($this->httpParsedResponseAr["ACK"])) 
+			{				
+				return $this->httpParsedResponseAr;				
+			} 
+			else  
+			{
+				$order->status = "error";
+				$order->errorcode = $this->httpParsedResponseAr['L_ERRORCODE0'];
+				$order->error = urldecode($this->httpParsedResponseAr['L_LONGMESSAGE0']);
+				$order->shorterror = urldecode($this->httpParsedResponseAr['L_SHORTMESSAGE0']);
+				
+				return false;				
+			}
+		}		
 		
 		/**
 		 * PAYPAL Function

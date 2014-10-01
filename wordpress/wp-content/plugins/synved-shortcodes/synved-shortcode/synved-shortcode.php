@@ -1,9 +1,9 @@
 <?php
 /*
 Module Name: Synved Shortcode
-Description: A complete set of WordPress shortcodes to add beautiful and useful elements that will spice up your site
+Description: An amazing free set of great elements for your site: SEO-ready tabs, sections, buttons, links to any content, author cards, lists, layouts, *conditionals* and more!
 Author: Synved
-Version: 1.6.11
+Version: 1.6.24
 Author URI: http://synved.com/
 License: GPLv2
 
@@ -18,8 +18,8 @@ In no event shall Synved Ltd. be liable to you or any third party for any direct
 
 
 define('SYNVED_SHORTCODE_LOADED', true);
-define('SYNVED_SHORTCODE_VERSION', 100060011);
-define('SYNVED_SHORTCODE_VERSION_STRING', '1.6.11');
+define('SYNVED_SHORTCODE_VERSION', 100060024);
+define('SYNVED_SHORTCODE_VERSION_STRING', '1.6.24');
 
 define('SYNVED_SHORTCODE_ADDON_PATH', str_replace(array('/', '\\'), DIRECTORY_SEPARATOR, dirname(__FILE__) . '/addons'));
 
@@ -443,7 +443,7 @@ function synved_shortcode_do_section($atts, $content = null, $code = '')
 
 function synved_shortcode_do_button($atts, $content = null, $code = '')
 {
-	$atts_def = array('tip' => null, 'type' => 'normal', 'link' => null, 'icon' => null, 'icon2' => null, 'tag' => null);
+	$atts_def = array('tip' => null, 'type' => 'normal', 'link' => null, 'icon' => null, 'icon2' => null, 'tag' => null, 'target' => null);
 	$atts = shortcode_atts($atts_def, $atts);
 	
 	$type = $atts['type'];
@@ -451,6 +451,7 @@ function synved_shortcode_do_button($atts, $content = null, $code = '')
 	$icon = $atts['icon'];
 	$icon2 = $atts['icon2'];
 	$tag = trim($atts['tag']);
+	$target = trim($atts['target']);
 	$class = null;
 	$click = null;
 	
@@ -483,7 +484,14 @@ function synved_shortcode_do_button($atts, $content = null, $code = '')
 	
 	if ($link != null)
 	{
-		$click = ' onclick="window.location = \'' . esc_attr($link) . '\'"';
+		if ($target == null)
+		{
+			$click = ' onclick="window.location = \'' . esc_attr($link) . '\'"';
+		}
+		else
+		{
+			$click = ' onclick="window.open(\'' . esc_attr($link) . '\',\'' . esc_attr($target) . '\');"';
+		}
 	}
 	
 	if ($tag != null)
@@ -498,8 +506,10 @@ function synved_shortcode_do_button($atts, $content = null, $code = '')
 
 function synved_shortcode_do_list($atts, $content = null, $code = '')
 {
-	$atts_def = array('type' => null, 'icon' => null);
+	$atts_def = array('type' => null, 'class' => null, 'icon' => null);
 	$atts = shortcode_atts($atts_def, $atts);
+	
+	$class_attr = $atts['class'];
 	
 	$pattern = get_shortcode_regex();
 	$matches = array();
@@ -540,6 +550,11 @@ function synved_shortcode_do_list($atts, $content = null, $code = '')
 			$id = 'synved-list-' . $synved_shortcode['instance']['list']['count'];
 			$class = ' synved-item-list-' . $type;
 			$style_type = isset($styles[$type]) ? $styles[$type] : $type;
+			
+			if ($class_attr != null)
+			{
+				$class .= ' ' . $class_attr;
+			}
 			
 			$items_out = null;
 			$count = count($items);
@@ -704,6 +719,8 @@ function synved_shortcode_column_register($type, $default = null)
 		}
 		case 'third':
 		case 'fourth':
+		case 'quarter':
+		case 'fifth':
 		{
 			$desc = 'a ' . $type_label . ' of the width';
 			
@@ -866,6 +883,12 @@ function synved_shortcode_do_link($atts, $content = null, $code = '', $type = nu
 				
 				break;
 			}
+			case 'linked-image':
+			{
+				$template_markup = '<a class="synved-link-anchor %%class%%" href="%%link%%"%%tip_attribute%%>%%thumbnail%%</a>';
+				
+				break;
+			}
 			case 'card':
 			case 'card-full':
 			{
@@ -994,7 +1017,7 @@ function synved_shortcode_link_register($type, $default = null)
 	}
 	
 	$params['size'] = __('Specify what size to select for the thumbnail, can be named size or numeric, e.g. "thumbnail" or "100x60"', 'synved-shortcode');
-	$params['template'] = esc_html(__('Specify what template to use to display the link, possible values are default,url,card,card-full,custom. You can use template %%%%tags%%%%, where "tags" can be link, tip, abstract, class, body, item_thumbnail_src, item_thumbnail_width, item_thumbnail_height, item_image_link, query_id, query_name and much more', 'synved-shortcode'));
+	$params['template'] = esc_html(__('Specify what template to use to display the link, possible values are default, url, linked-image, card, card-full, custom. You can use template %%%%tags%%%%, where "tags" can be link, tip, abstract, class, body, item_thumbnail_src, item_thumbnail_width, item_thumbnail_height, item_image_link, query_id, query_name and much more', 'synved-shortcode'));
 	$params['edit'] = __('Specify how to edit the URL for the link, you can add parameters in the form of name=value,name2=value2 or remove them using -name,-name2', 'synved-shortcode');
 	
 	//$desc = __('a', 'synved-shortcode') . ' ' . $desc;
@@ -1022,11 +1045,12 @@ function synved_shortcode_do_hide($atts, $content = null, $code = '', $type = nu
 
 function synved_shortcode_do_condition($atts, $content = null, $code = '', $type = null)
 {
-	$atts_def = array('check' => '', 'param_1' => '');
+	$atts_def = array('check' => '', 'param_1' => '', 'param_2' => '');
 	$atts = shortcode_atts($atts_def, $atts);
 	
 	$check = $atts['check'];
 	$param_1 = $atts['param_1'];
+	$param_2 = $atts['param_2'];
 	$success = false;
 	
 	$id = get_the_ID();
@@ -1095,6 +1119,79 @@ function synved_shortcode_do_condition($atts, $content = null, $code = '', $type
 				
 				break;
 			}
+			case 'post_meta_is':
+			{
+				$arg_name = strtolower($param_1);
+				
+				if ($arg_name != null)
+				{
+					$arg_value = $param_2;
+					
+					if ($the_post)
+					{
+						$post_meta = get_post_meta($the_post->ID, $arg_name, false);
+						
+						if ($post_meta != null)
+						{
+							if ($arg_value != null)
+							{
+								foreach ($post_meta as $meta_value)
+								{
+									if ($meta_value == $arg_value)
+									{
+										$success = true;
+										
+										break;
+									}
+								}
+							}
+							else
+							{
+								$success = true;
+							}
+						}
+					}
+				}
+				
+				break;
+			}
+			case 'match_query':
+			case 'match_query_argument':
+			case 'match_post':
+			case 'match_post_argument':
+			case 'match_request':
+			case 'match_request_argument':
+			case 'match_cookie':
+			{
+				$list = $_GET;
+				
+				$check = str_ireplace('_argument', '', $check);
+				
+				if ($check == 'match_post')
+				{
+					$list = $_POST;
+				}
+				else if ($check == 'match_request')
+				{
+					$list = $_REQUEST;
+				}
+				else if ($check == 'match_cookie')
+				{
+					$list = $_COOKIE;
+				}
+				
+				$arg_name = strtolower($param_1);
+				
+				if ($arg_name != null)
+				{
+					$arg_value = $param_2;
+					$query_value = isset($list[$arg_name]) ? $list[$arg_name] : null;
+				
+					$success = ($arg_value == $query_value);
+				}
+				
+				break;
+			}
 		}
 	}
 	
@@ -1104,55 +1201,6 @@ function synved_shortcode_do_condition($atts, $content = null, $code = '', $type
 	}
 	
 	return null;
-}
-
-function synved_shortcode_condition_register($type, $default = null)
-{
-	$name = $type;
-	$type_label = synved_shortcode_item_label_create($type);
-	$cb = create_function('$atts, $content = null, $code = \'\'', 'return synved_shortcode_do_condition($atts, $content, $code, \'' . $type . '\');');
-	
-	synved_shortcode_add($type, $cb, false, __('Condition', 'synved-shortcode') . ' ' . $type_label);
-	
-	if ($default == null)
-	{
-		$default = '[%%_synved_name%% check="false"]';
-	}
-	
-	synved_shortcode_item_group_set($name, 'condition');
-	
-	if ($default != null)
-	{
-		synved_shortcode_item_default_set($name, $default);
-	}
-	
-	$type_label = str_replace(array('-', '_'), ' ', $type);
-	$desc = null;
-	
-	if (in_array(strtolower($type[0]), array('a', 'e', 'i', 'o', 'u')))
-	{
-		$desc .= __('an', 'synved-shortcode');
-	}
-	else
-	{
-		$desc .= __('a', 'synved-shortcode');
-	}
-	
-	$desc .= ' ' . $type_label . ' ' . __('condition', 'synved-shortcode');
-	
-	if ($type == 'plain')
-	{
-		$desc .= __('. The box has no special decorations or icons.', 'synved-shortcode');
-	}
-	
-	$help = array(
-		'tip' => __('Creates a message box displaying', 'synved-shortcode') . ' ' . $desc,
-		'parameters' => array(
-			'align' => __('Determines the text alignment. Can be either left, right or center.', 'synved-shortcode'), 
-		)
-	);
-	
-	synved_shortcode_item_help_set($name, $help);
 }
 
 function synved_shortcode_add($name, $cb, $internal = false, $label = null, $default = null)
@@ -1245,7 +1293,6 @@ Section Content 2.
 	synved_shortcode_item_help_set('button', array(
 		'tip' => __('Creates a nice-looking button', 'synved-shortcode'),
 		'parameters' => array(
-			//'type' => __('Specify the type of button being created', 'synved-shortcode'),
 			'type' => __('Specify a custom type of default button, possible values are download,purchase', 'synved-shortcode'),
 			'link' => __('Specify a link to open when clicking on the button with the mouse', 'synved-shortcode'),
 			'icon' => __('Specify an icon to display on the left of the button, check the <a target="_blank" href="http://synved.com/blog/help/tutorial/wordpress-shortcodes-icons/">list of icons</a>', 'synved-shortcode'),
@@ -1267,6 +1314,7 @@ Section Content 2.
 		'tip' => __('Creates a list of items in a layout', 'synved-shortcode'),
 		'parameters' => array(
 			'type' => __('Only for [list] element, specify a custom type, possible values are decimal,alpha,roman,latin,upper-alpha,lower-roman,upper-latin', 'synved-shortcode'),
+			'class' => __('Only for [list] element, specify a custom CSS class for the main list container', 'synved-shortcode'),
 			'icon' => __('Specify the default icon for [list], which overwrites <b>type</b>, or the individual icon for each [item], check the <a target="_blank" href="http://synved.com/blog/help/tutorial/wordpress-shortcodes-icons/">list of icons</a>', 'synved-shortcode'),
 			'tip' => __('Only for [item] element, specify a tooltip to show when hovering the item with the mouse', 'synved-shortcode'),
 			//'active' => __('Only for [section] element, specify whether the tab is the active tab (use active=yes)', 'synved-shortcode')
@@ -1279,6 +1327,7 @@ Section Content 2.
 	synved_shortcode_column_register('half');
 	synved_shortcode_column_register('third');
 	synved_shortcode_column_register('quarter');
+	synved_shortcode_column_register('fifth');
 
 	synved_shortcode_box_register('success');
 	synved_shortcode_box_register('info');
@@ -1308,8 +1357,9 @@ Section Content 2.
 	synved_shortcode_item_help_set('condition', array(
 		'tip' => __('Creates a condition block which will only add its contents to the page if the condition is true.', 'synved-shortcode'),
 		'parameters' => array(
-			'check' => __('Determines the condition to check for. Possible values are is_user_logged_in, is_user_admin, is_user_editor, is_user_author, user_can, is_post_protected, is_post_sticky, post_has_featured_image', 'synved-shortcode'),
-			'param_1' => __('When specifying check of "user_can" param_1 specifies the user capability', 'synved-shortcode')
+			'check' => __('Determines the condition to check for. Possible values are is_user_logged_in, is_user_admin, is_user_editor, is_user_author, user_can, is_post_protected, is_post_sticky, post_has_featured_image, match_query/request/post/cookie', 'synved-shortcode'),
+			'param_1' => __('When the check is "user_can" param_1 specifies the user capability, when the check is "match_query" param_1 contains the argument name.', 'synved-shortcode'),
+			'param_2' => __('When the check is "match_query/request/post/cookie" param_2 contains the argument value.', 'synved-shortcode')
 		)
 	));
 }
